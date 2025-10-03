@@ -1,6 +1,12 @@
+./devserver.sh
 # Dev environment
 pip
 autopep8
 
 # App
 flask
+
+# Testing
+pytest
+pytest-asyncio
+pyppeteer

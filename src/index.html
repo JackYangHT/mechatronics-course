@@ -1,12 +1,1018 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hello World</title>
-  </head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIT-Inspired Mechatronics Course (G7-G12)</title>
+    <!-- Load Tailwind CSS for modern, responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for aesthetic appeal and responsiveness */
+        :root {
+            --primary-color: #f6993f; /* Orange/Gold for MIT feel */
+            --secondary-color: #38a169; /* Green for success/pass */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+        .container {
+            max-width: 1000px;
+        }
+        .course-card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-left: 6px solid var(--primary-color);
+            transition: transform 0.2s;
+        }
+        .unlocked-card:hover {
+            transform: translateY(-3px);
+            cursor: pointer;
+        }
+        .pass-button {
+            background-color: var(--secondary-color);
+            transition: background-color 0.2s;
+        }
+        .pass-button:hover:not(:disabled) {
+            background-color: #2f855a;
+        }
+        .locked-unit {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .flag-button {
+            transition: transform 0.1s;
+        }
+        .flag-button:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
 
-  <body>
-    <h1>Hello World</h1>
-  </body>
+    <div id="app" class="container mx-auto">
+        <!-- HEADER AND LANGUAGE SELECTION -->
+        <header class="text-center mb-10 p-6 bg-white rounded-xl shadow-lg">
+            <h1 class="text-4xl font-extrabold text-gray-800">Mechatronics: G7 Foundations</h1>
+            <p class="text-lg text-gray-500 mt-2">Prepared for MIT Faculty (G7-G12 Curriculum)</p>
+            <div class="mt-4 flex justify-center space-x-4">
+                <button onclick="setLanguage('en')" class="flag-button p-2 rounded-full border border-gray-300 bg-white shadow-sm" title="English">
+                    <span class="text-2xl">🇺🇸</span>
+                </button>
+                <button onclick="setLanguage('th')" class="flag-button p-2 rounded-full border border-gray-300 bg-white shadow-sm" title="Thai">
+                    <span class="text-2xl">🇹🇭</span>
+                </button>
+                <button onclick="setLanguage('zh')" class="flag-button p-2 rounded-full border border-gray-300 bg-white shadow-sm" title="Mandarin">
+                    <span class="text-2xl">🇹🇼</span>
+                </button>
+            </div>
+            <p id="language-display" class="text-sm text-gray-500 mt-2">Language: English</p>
+            <p id="auth-status" class="text-xs text-blue-600 mt-1"></p>
+        </header>
+        
+        <!-- MAIN CONTENT AREA -->
+        <div id="content" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- COURSE DASHBOARD (LEFT) -->
+            <div class="lg:col-span-1 space-y-4">
+                <h2 id="dashboard-title" class="text-2xl font-semibold text-gray-700">Course Units</h2>
+                <div id="unit-list" class="space-y-3">
+                    <!-- Unit cards will be rendered here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- LECTURE / QUIZ AREA (RIGHT) -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg min-h-[500px]">
+                <div id="current-unit-display">
+                    <h2 class="text-3xl font-bold text-gray-800 border-b pb-3 mb-4" id="unit-title">Select a Unit to Begin</h2>
+                    <div id="lecture-content" class="text-gray-700 space-y-4">
+                        <p id="lecture-text">Welcome! Your progress is saved automatically. Select G7 Unit 1 to start your Mechatronics journey from the very basics, scaled up to MIT's standards of rigor.</p>
+                    </div>
+                    
+                    <!-- IN-APP QUIZ SECTION (The 100% Gate) -->
+                    <div id="quiz-area" class="mt-8 p-6 bg-gray-50 rounded-lg hidden">
+                        <h3 id="quiz-header" class="text-2xl font-semibold text-gray-800 mb-4">Unit Quiz: Pass 100% to Unlock Next Unit</h3>
+                        <div id="quiz-questions" class="space-y-6">
+                            <!-- Questions rendered here -->
+                        </div>
+                        <button id="submit-quiz-btn" onclick="submitQuiz()" class="pass-button text-white font-bold py-3 px-6 rounded-lg mt-6 shadow-md w-full">
+                            Submit Quiz
+                        </button>
+                        <p id="quiz-feedback" class="mt-4 text-center font-bold"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE AND CORE SCRIPTS -->
+    <script type="module">
+        // Firebase Imports - MUST use the global variables provided by the Canvas environment
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Set Firebase Log Level for debugging
+        setLogLevel('Debug');
+
+        // --- GLOBAL VARIABLES (Provided by Canvas) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let db;
+        let auth;
+        let userId = null;
+        let currentUnitId = 'G7_U1';
+        let userProgress = { scores: {} }; // Initialize scores map defensively
+        let currentLanguage = 'en';
+
+        // --- CURRICULUM DATA (Synthesized from NotebookLM Research) ---
+        // This object holds all lecture content, quiz questions, and their translations.
+        const CURRICULUM = {
+            'G7_U1': {
+                title: { 
+                    en: "G7 Unit 1: Simple Machines & Force Transfer",
+                    th: "G7 หน่วยที่ 1: เครื่องจักรกลอย่างง่ายและการถ่ายโอนแรง",
+                    zh: "七年级第一单元：简单机械与力传递"
+                },
+                lecture: {
+                    en: "This unit is the foundation of Mechanical Systems. We study how **Levers, Gears, and Pulleys** multiply or redirect force, allowing small inputs to create large, powerful outputs. This is the simplest way to understand the movement and power transmission needed for Robotics.",
+                    th: "หน่วยนี้คือรากฐานของระบบกลไก เราจะศึกษาว่า **คาน, เฟือง, และรอก** เพิ่มหรือเปลี่ยนทิศทางของแรงได้อย่างไร ทำให้แรงเล็กน้อยสามารถสร้างผลลัพธ์ที่ใหญ่และมีพลังได้ นี่คือวิธีที่ง่ายที่สุดในการทำความเข้าใจการเคลื่อนที่และการส่งกำลังที่จำเป็นสำหรับหุ่นยนต์",
+                    zh: "本单元是机械系统的基础。我们学习**杠杆、齿轮和滑轮**如何倍增或重新定向力，从而使小的输入产生大而强大的输出。这是理解机器人所需运动和动力传输的最简单方法。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "Which simple machine multiplies force, often used to lift heavy objects?",
+                            th: "เครื่องจักรกลอย่างง่ายใดที่ช่วยเพิ่มแรง มักใช้ในการยกวัตถุหนัก?",
+                            zh: "哪种简单机械可以增大作用力，常用于举起重物？"
+                        },
+                        options: {
+                            en: ["Pulley", "Gear", "Lever"],
+                            th: ["รอก", "เฟือง", "คาน"],
+                            zh: ["滑轮", "齿轮", "杠杆"]
+                        },
+                        answer: 2 // Lever/คาน/杠杆
+                    },
+                    {
+                        question: {
+                            en: "What is the primary role of a gear system in Mechatronics?",
+                            th: "บทบาทหลักของระบบเฟืองในเมคคาทรอนิกส์คืออะไร?",
+                            zh: "齿轮系统在机电一体化中的主要作用是什么？"
+                        },
+                        options: {
+                            en: ["Generate electricity", "Store data", "Transfer and change speed/torque"],
+                            th: ["ผลิตไฟฟ้า", "จัดเก็บข้อมูล", "ถ่ายโอนและเปลี่ยนความเร็ว/แรงบิด"],
+                            zh: ["发电", "储存数据", "传输和改变速度/扭矩"]
+                        },
+                        answer: 2 // Transfer.../ถ่ายโอน.../传输...
+                    }
+                ],
+                next_unit: 'G7_U2'
+            },
+            'G7_U2': {
+                title: { 
+                    en: "G7 Unit 2: Basic Circuits & Components",
+                    th: "G7 หน่วยที่ 2: วงจรพื้นฐานและส่วนประกอบ",
+                    zh: "七年级第二单元：基础电路与元件"
+                },
+                lecture: {
+                    en: "In this unit, we introduce the flow of energy. We study the basic components: **Power Source (Battery), Resistor, and LED.** We learn Ohm's Law and how to safely build a series circuit. This scales to complex power electronics in later grades.",
+                    th: "ในหน่วยนี้ เราจะแนะนำการไหลของพลังงาน เราจะศึกษาองค์ประกอบพื้นฐาน: **แหล่งพลังงาน (แบตเตอรี่), ตัวต้านทาน, และ LED** เราเรียนรู้กฎของโอห์มและวิธีสร้างวงจรอนุกรมอย่างปลอดภัย ซึ่งจะนำไปสู่การเรียนรู้อิเล็กทรอนิกส์กำลังที่ซับซ้อนในเกรดที่สูงขึ้น",
+                    zh: "在本单元中，我们介绍能量的流动。我们研究基本元件：**电源（电池）、电阻和LED**。我们学习欧姆定律以及如何安全地构建串联电路。这为以后年级的复杂电力电子学打下基础。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What component limits the flow of current in a circuit?",
+                            th: "ส่วนประกอบใดจำกัดการไหลของกระแสไฟฟ้าในวงจร?",
+                            zh: "哪个元件用于限制电路中的电流？"
+                        },
+                        options: {
+                            en: ["LED", "Resistor", "Switch"],
+                            th: ["LED", "ตัวต้านทาน", "สวิตช์"],
+                            zh: ["LED", "电阻", "开关"]
+                        },
+                        answer: 1 // Resistor/ตัวต้านทาน/电阻
+                    },
+                    {
+                        question: {
+                            en: "What is the unit of measure for electrical resistance?",
+                            th: "หน่วยวัดความต้านทานไฟฟ้าคืออะไร?",
+                            zh: "电阻 की หน่วยวัดคืออะไร?"
+                        },
+                        options: {
+                            en: ["Volt", "Ohm", "Ampere"],
+                            th: ["โวลต์", "โอห์ม", "แอมแปร์"],
+                            zh: ["伏特", "欧姆", "安培"]
+                        },
+                        answer: 1 // Ohm/โอห์ม/欧姆
+                    }
+                ],
+                next_unit: 'G7_U3'
+            },
+            'G7_U3': {
+                title: { 
+                    en: "G7 Unit 3: Block-Based Coding Logic",
+                    th: "G7 หน่วยที่ 3: ตรรกะการเขียนโค้ดแบบบล็อก",
+                    zh: "七年级第三单元：积木式编程逻辑"
+                },
+                lecture: {
+                    en: "The final pillar: Control. We use a **Block-Based Coding** platform (like Scratch or Tinkercad Blocks) to teach **Sequencing** (step-by-step instructions) and **Conditional Logic** (IF/THEN statements). This prepares the brain for all advanced control algorithms.",
+                    th: "เสาหลักสุดท้าย: การควบคุม เราใช้แพลตฟอร์ม **การเขียนโค้ดแบบบล็อก** (เช่น Scratch หรือ Tinkercad Blocks) เพื่อสอน **การเรียงลำดับ** (คำสั่งทีละขั้นตอน) และ **ตรรกะแบบมีเงื่อนไข** (คำสั่ง IF/THEN) ซึ่งเป็นการเตรียมสมองสำหรับอัลกอริทึมการควบคุมขั้นสูงทั้งหมด",
+                    zh: "最后一根支柱：控制。我们使用**积木式编程**平台（如 Scratch 或 Tinkercad Blocks）来教授**序列**（分步指令）和**条件逻辑**（IF/THEN 语句）。这为所有高级控制算法奠定逻辑基础。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What is the primary function of an 'IF/THEN' block?",
+                            th: "หน้าที่หลักของบล็อก 'IF/THEN' คืออะไร?",
+                            zh: "‘IF/THEN’ 模块的主要功能是什么？"
+                        },
+                        options: {
+                            en: ["Repeating a task", "Making a decision", "Storing a value"],
+                            th: ["ทำซ้ำงาน", "ตัดสินใจ", "จัดเก็บค่า"],
+                            zh: ["重复任务", "做出决定", "存储数值"]
+                        },
+                        answer: 1 // Making a decision/ตัดสินใจ/做出决定
+                    },
+                    {
+                        question: {
+                            en: "Which concept involves running a sequence of code steps one after the other?",
+                            th: "แนวคิดใดที่เกี่ยวข้องกับการรันขั้นตอนโค้ดตามลำดับทีละขั้นตอน?",
+                            zh: "哪个概念涉及按顺序运行一系列代码步骤？"
+                        },
+                        options: {
+                            en: ["Looping", "Debugging", "Sequencing"],
+                            th: ["การวนซ้ำ", "การแก้ไขจุดบกพร่อง", "การเรียงลำดับ"],
+                            zh: ["循环", "调试", "序列"]
+                        },
+                        answer: 2 // Sequencing/การเรียงลำดับ/序列
+                    }
+                ],
+                next_unit: 'G8_U1' // Leads to Grade 8: Microcontrollers
+            },
+            'G8_U1': {
+                title: { 
+                    en: "G8 Unit 1: Introduction to Microcontrollers (MCU)",
+                    th: "G8 หน่วยที่ 1: บทนำสู่ไมโครคอนโทรลเลอร์ (MCU)",
+                    zh: "八年级第一单元：微控制器 (MCU) 入门"
+                },
+                lecture: {
+                    en: "Congratulations on completing G7! G8 focuses on the **Microcontroller (MCU)**, the system's central brain. It connects the mechanical (G7 U1) and electrical (G7 U2) systems. We will now move from block code to the text-based **C++ language** (Arduino IDE) for programming basic digital Input/Output (I/O).",
+                    th: "ขอแสดงความยินดีที่เรียน G7 จบ! G8 เน้นที่ **ไมโครคอนโทรลเลอร์ (MCU)** ซึ่งเป็นสมองส่วนกลางของระบบ มันเชื่อมโยงระบบกลไก (G7 U1) และระบบไฟฟ้า (G7 U2) เข้าด้วยกัน ตอนนี้เราจะเปลี่ยนจากการเขียนโค้ดแบบบล็อกเป็นการใช้ **ภาษา C++** (ใน Arduino IDE) เพื่อเขียนโปรแกรมอินพุต/เอาต์พุตดิจิทัล (I/O) พื้นฐาน",
+                    zh: "恭喜您完成七年级！八年级重点学习**微控制器（MCU）**。这是连接您七年级机械和电路的中央大脑。我们将开始使用基于文本的 **C++ 语言**（Arduino IDE）用于编写基本的数字输入和输出（I/O）程序。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What is the primary function of the Microcontroller in a mechatronics system?",
+                            th: "หน้าที่หลักของไมโครคอนโทรลเลอร์ในระบบเมคคาทรอนิกส์คืออะไร?",
+                            zh: "微控制器在机电一体化系统中的主要功能是什么？"
+                        },
+                        options: {
+                            en: ["Storage of large files", "Processing logic and control signals", "Providing power to motors"],
+                            th: ["จัดเก็บไฟล์ขนาดใหญ่", "ประมวลผลตรรกะและสัญญาณควบคุม", "จ่ายพลังงานให้กับมอเตอร์"],
+                            zh: ["存储大型文件", "处理逻辑和控制信号", "为电机供电"]
+                        },
+                        answer: 1 // Processing logic and control signals / ประมวลผลตรรกะและสัญญาณควบคุม / 处理逻辑和控制信号
+                    },
+                    {
+                        question: {
+                            en: "When programming an Arduino MCU, what does 'Digital Output' typically refer to?",
+                            th: "เมื่อเขียนโปรแกรม Arduino MCU, 'เอาต์พุตดิจิทัล' โดยทั่วไปหมายถึงอะไร?",
+                            zh: "编程 Arduino MCU 时，'数字输出'通常指什么？"
+                        },
+                        options: {
+                            en: ["Reading a sensor value", "Turning a component ON or OFF (HIGH/LOW)", "Translating the language"],
+                            th: ["การอ่านค่าเซ็นเซอร์", "การเปิดหรือปิดส่วนประกอบ (HIGH/LOW)", "การแปลภาษา"],
+                            zh: ["读取传感器值", "打开或关闭组件（HIGH/LOW）", "翻译语言"]
+                        },
+                        answer: 1 // Turning a component ON or OFF (HIGH/LOW) / การเปิดหรือปิดส่วนประกอบ (HIGH/LOW) / 打开或关闭组件（HIGH/LOW）
+                    }
+                ],
+                next_unit: 'G8_U2'
+            },
+            'G8_U2': {
+                title: { 
+                    en: "G8 Unit 2: Intermediate Mechanisms & Chassis Design",
+                    th: "G8 หน่วยที่ 2: กลไกระดับกลางและการออกแบบโครงสร้างหลัก",
+                    zh: "八年级第二单元：中级机构与底盘设计"
+                },
+                lecture: {
+                    en: "We move from simple levers to mechanisms that convert motion, like **Crank-Sliders** and **Cams**. You'll also learn to design a stable **Chassis**—the mechanical framework that holds the MCU, sensors, and motors together. This is crucial for robot stability and reliability.",
+                    th: "เราเปลี่ยนจากคานอย่างง่ายไปสู่กลไกที่เปลี่ยนการเคลื่อนที่ เช่น **กลไกข้อเหวี่ยง-เลื่อน** และ **ลูกเบี้ยว** นอกจากนี้คุณยังจะได้เรียนรู้วิธีการออกแบบ **โครงสร้างหลัก** ที่มั่นคง—กรอบกลไกที่ยึด MCU, เซ็นเซอร์, และมอเตอร์เข้าด้วยกัน ซึ่งสำคัญต่อเสถียรภาพและความน่าเชื่อถือของหุ่นยนต์",
+                    zh: "我们从简单的杠杆转向了转换运动的机构，例如**曲柄滑块**和**凸轮**。您还将学习设计稳定的**底盘**——固定 MCU、传感器和电机的机械框架。这对于机器人的稳定性和可靠性至关重要。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "Which mechanism is primarily used to convert rotating motion into back-and-forth (reciprocating) linear motion?",
+                            th: "กลไกใดที่ใช้หลักในการเปลี่ยนการเคลื่อนที่แบบหมุนเป็นการเคลื่อนที่เชิงเส้นแบบกลับไปกลับมา (ลูกสูบ)?",
+                            zh: "哪种机构主要用于将旋转运动转换为往复（直线）运动？"
+                        },
+                        options: {
+                            en: ["Cam and Follower", "Belt Drive", "Crank-Slider"],
+                            th: ["ลูกเบี้ยวและตัวตาม", "การขับด้วยสายพาน", "กลไกข้อเหวี่ยง-เลื่อน"],
+                            zh: ["凸轮与从动件", "皮带传动", "曲柄滑块机构"]
+                        },
+                        answer: 2 // Crank-Slider/กลไกข้อเหวี่ยง-เลื่อน/曲柄滑块机构
+                    },
+                    {
+                        question: {
+                            en: "In Mechatronics, what is the key purpose of the robot's 'Chassis'?",
+                            th: "ในเมคคาทรอนิกส์ จุดประสงค์หลักของ 'โครงสร้างหลัก' ของหุ่นยนต์คืออะไร?",
+                            zh: "在机电一体化中，机器人'底盘'的关键目的是什么？"
+                        },
+                        options: {
+                            en: ["To process the code", "To provide a stable structure for components", "To generate electrical power"],
+                            th: ["เพื่อประมวลผลโค้ด", "เพื่อให้โครงสร้างที่มั่นคงสำหรับส่วนประกอบ", "เพื่อสร้างพลังงานไฟฟ้า"],
+                            zh: ["处理代码", "为组件提供稳定的结构", "产生电力"]
+                        },
+                        answer: 1 // To provide a stable structure/เพื่อให้โครงสร้างที่มั่นคงสำหรับส่วนประกอบ/为组件提供稳定的结构
+                    }
+                ],
+                next_unit: 'G8_U3'
+            },
+            // --- NEW CONTENT FOR GRADE 8, UNIT 3 ---
+            'G8_U3': {
+                title: { 
+                    en: "G8 Unit 3: Basic Sensing & Actuation (I/O)",
+                    th: "G8 หน่วยที่ 3: การตรวจจับและการขับเคลื่อนพื้นฐาน (I/O)",
+                    zh: "八年级第三单元：基础传感与驱动 (I/O)"
+                },
+                lecture: {
+                    en: "This unit is the heart of the I-P-O loop. You will learn to use **Digital Sensors** (e.g., buttons, switches) and **Analog Sensors** (e.g., potentiometers, light sensors) as inputs. You will then program the MCU to control **Actuators** (e.g., buzzers, LEDs) based on sensor readings, completing your first integrated Mechatronics project.",
+                    th: "หน่วยนี้คือหัวใจของวงจร I-P-O คุณจะได้เรียนรู้การใช้ **เซ็นเซอร์ดิจิทัล** (เช่น ปุ่ม, สวิตช์) และ **เซ็นเซอร์อะนาล็อก** (เช่น โพเทนชิโอมิเตอร์, เซ็นเซอร์แสง) เป็นอินพุต จากนั้นคุณจะเขียนโปรแกรม MCU เพื่อควบคุม **ตัวขับเคลื่อน** (เช่น ลำโพง, LED) ตามค่าที่อ่านได้จากเซ็นเซอร์ เพื่อจบโครงการเมคคาทรอนิกส์ที่บูรณาการครั้งแรกของคุณ",
+                    zh: "本单元是 I-P-O 循环的核心。您将学习使用**数字传感器**（例如按钮、开关）和**模拟传感器**（例如电位器、光敏传感器）作为输入。然后，您将编程 MCU 根据传感器读数控制**执行器**（例如蜂鸣器、LED），完成您的第一个集成机电一体化项目。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "Which type of sensor provides only two distinct values: ON or OFF (HIGH or LOW)?",
+                            th: "เซ็นเซอร์ประเภทใดที่ให้ค่าเพียงสองค่าที่ชัดเจน: เปิดหรือปิด (HIGH หรือ LOW)?",
+                            zh: "哪种类型的传感器只提供两个明确的值：开或关（高或低）？"
+                        },
+                        options: {
+                            en: ["Analog Sensor", "Temperature Sensor", "Digital Sensor"],
+                            th: ["เซ็นเซอร์อะนาล็อก", "เซ็นเซอร์อุณหภูมิ", "เซ็นเซอร์ดิจิทัล"],
+                            zh: ["模拟传感器", "温度传感器", "数字传感器"]
+                        },
+                        answer: 2 // Digital Sensor/เซ็นเซอร์ดิจิทัล/数字传感器
+                    },
+                    {
+                        question: {
+                            en: "What part of the mechatronics system performs a physical action (like making a sound or moving a mechanism)?",
+                            th: "ส่วนใดของระบบเมคคาทรอนิกส์ที่ทำหน้าที่ทางกายภาพ (เช่น สร้างเสียงหรือการเคลื่อนไหวของกลไก)?",
+                            zh: "机电一体化系统中的哪个部分执行物理动作（例如发出声音或移动机构）？"
+                        },
+                        options: {
+                            en: ["Input", "Actuator", "Processing Unit"],
+                            th: ["อินพุต", "ตัวขับเคลื่อน", "หน่วยประมวลผล"],
+                            zh: ["输入", "执行器", "处理单元"]
+                        },
+                        answer: 1 // Actuator/ตัวขับเคลื่อน/执行器
+                    }
+                ],
+                next_unit: 'G9_U1' // Leads to Grade 9: Servo Motors & PWM
+            },
+            // --- NEW CONTENT FOR GRADE 9, UNIT 1 ---
+            'G9_U1': {
+                title: { 
+                    en: "G9 Unit 1: Servo Motors & Precision Actuation",
+                    th: "G9 หน่วยที่ 1: เซอร์โวมอเตอร์และการขับเคลื่อนที่แม่นยำ",
+                    zh: "九年级第一单元：伺服电机与精确驱动"
+                },
+                lecture: {
+                    en: "Welcome to Grade 9! We now seek precision. Unlike simple DC motors, **Servo Motors** allow you to command a specific angular position (e.g., $45^\circ$). This is achieved using a **Control Signal** (a square wave) sent by the microcontroller. Servo control is essential for building robotic arms and highly accurate moving parts.",
+                    th: "ยินดีต้อนรับสู่เกรด 9! เราจะเข้าสู่ความแม่นยำแล้ว ต่างจากมอเตอร์ DC ธรรมดา **เซอร์โวมอเตอร์** ช่วยให้คุณสามารถสั่งตำแหน่งเชิงมุมที่เฉพาะเจาะจงได้ (เช่น $45^\circ$) ซึ่งทำได้โดยใช้ **สัญญาณควบคุม** (คลื่นสี่เหลี่ยม) ที่ส่งโดยไมโครคอนโทรลเลอร์ การควบคุมเซอร์โวมีความสำคัญสำหรับการสร้างแขนหุ่นยนต์และชิ้นส่วนที่เคลื่อนที่ได้อย่างแม่นยำสูง",
+                    zh: "欢迎来到九年级！我们现在追求精度。与简单的直流电机不同，**伺服电机**允许您指定精确的角度位置（例如 $45^\circ$）。这是通过微控制器发送的**控制信号**（方波）实现的。伺服控制对于构建机械臂和高精度移动部件至关重要。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What is the key advantage of a Servo Motor over a standard DC motor in Mechatronics?",
+                            th: "อะไรคือข้อได้เปรียบที่สำคัญของเซอร์โวมอเตอร์เมื่อเทียบกับมอเตอร์ DC มาตรฐานในเมคคาทรอนิกส์?",
+                            zh: "伺服电机相对于标准直流电机在机电一体化中的主要优势是什么？"
+                        },
+                        options: {
+                            en: ["It generates its own power", "It allows precise angular positioning", "It is easier to program with blocks"],
+                            th: ["สร้างพลังงานด้วยตัวเอง", "ช่วยให้การวางตำแหน่งเชิงมุมแม่นยำ", "เขียนโค้ดแบบบล็อกได้ง่ายกว่า"],
+                            zh: ["它可以自行发电", "它允许精确的角度定位", "它更容易用积木编程"]
+                        },
+                        answer: 1 // It allows precise angular positioning/ช่วยให้การวางตำแหน่งเชิงมุมแม่นยำ/它允许精确的角度定位
+                    },
+                    {
+                        question: {
+                            en: "A Servo Motor requires what type of specific signal to tell it which position to move to?",
+                            th: "เซอร์โวมอเตอร์ต้องการสัญญาณชนิดใดโดยเฉพาะเพื่อบอกตำแหน่งที่จะเคลื่อนที่ไป?",
+                            zh: "伺服电机需要哪种特定类型的信号来告知它移动到哪个位置？"
+                        },
+                        options: {
+                            en: ["Constant Voltage (DC)", "Control Signal (Pulse)", "Pure Sine Wave"],
+                            th: ["แรงดันคงที่ (DC)", "สัญญาณควบคุม (พัลส์)", "คลื่นไซน์บริสุทธิ์"],
+                            zh: ["恒定电压（直流）", "控制信号（脉冲）", "纯正弦波"]
+                        },
+                        answer: 1 // Control Signal (Pulse)/สัญญาณควบคุม (พัลส์)/控制信号（脉冲）
+                    }
+                ],
+                next_unit: 'G9_U2' // Leads to Grade 9: PWM for Analog Control
+            },
+            // --- NEW CONTENT FOR GRADE 9, UNIT 2 ---
+            'G9_U2': {
+                title: {
+                    en: "G9 Unit 2: PWM for Analog Control",
+                    th: "G9 หน่วยที่ 2: PWM สำหรับการควบคุมแบบอะนาล็อก",
+                    zh: "九年级第二单元：用于模拟控制的 PWM"
+                },
+                lecture: {
+                    en: "To achieve the precision needed for servo control, we use **Pulse Width Modulation (PWM)**. PWM is a digital trick where the microcontroller rapidly switches a pin ON and OFF. By changing the *duty cycle* (the ratio of ON time to OFF time), we can simulate different voltage levels, giving us **Analog-like Control** over speed and brightness, critical for smooth motion.",
+                    th: "เพื่อให้ได้ความแม่นยำที่จำเป็นสำหรับการควบคุมเซอร์โว เราใช้ **Pulse Width Modulation (PWM)** PWM เป็นกลวิธีดิจิทัลที่ไมโครคอนโทรลเลอร์จะสลับพินเปิดและปิดอย่างรวดเร็ว โดยการเปลี่ยน *รอบการทำงาน* (อัตราส่วนของเวลาเปิดต่อเวลาปิด) เราสามารถจำลองระดับแรงดันไฟฟ้าที่แตกต่างกันได้ ทำให้เรามีการ **ควบคุมเสมือนอะนาล็อก** เหนือความเร็วและความสว่าง ซึ่งสำคัญต่อการเคลื่อนที่ที่ราบรื่น",
+                    zh: "为了实现伺服控制所需的精度，我们使用**脉宽调制（PWM）**。PWM 是一种数字技巧，微控制器会快速开关引脚。通过改变*占空比*（导通时间与关闭时间的比率），我们可以模拟不同的电压水平，从而对速度和亮度进行**类模拟控制**，这对于平稳运动至关重要。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What does changing the 'Duty Cycle' in PWM directly affect?",
+                            th: "การเปลี่ยน 'รอบการทำงาน' ใน PWM ส่งผลกระทบโดยตรงต่ออะไร?",
+                            zh: "改变 PWM 中的 '占空比' 直接影响什么？"
+                        },
+                        options: {
+                            en: ["The physical size of the motor", "The simulated voltage/power delivered to the component", "The maximum voltage of the battery"],
+                            th: ["ขนาดทางกายภาพของมอเตอร์", "แรงดันไฟฟ้า/กำลังไฟฟ้าจำลองที่ส่งไปยังส่วนประกอบ", "แรงดันไฟฟ้าสูงสุดของแบตเตอรี่"],
+                            zh: ["电机的物理尺寸", "传递给组件的模拟电压/功率", "电池的最大电压"]
+                        },
+                        answer: 1 // The simulated voltage/power delivered to the component/แรงดันไฟฟ้า/กำลังไฟฟ้าจำลองที่ส่งไปยังส่วนประกอบ/传递给组件的模拟电压/功率
+                    },
+                    {
+                        question: {
+                            en: "The core purpose of PWM in mechatronics is to achieve control that simulates which type of signal?",
+                            th: "จุดประสงค์หลักของ PWM ในเมคคาทรอนิกส์คือเพื่อให้ได้การควบคุมที่จำลองสัญญาณประเภทใด?",
+                            zh: "PWM ใน机电一体化中的核心目的是模拟哪种类型的信号以实现控制？"
+                        },
+                        options: {
+                            en: ["Analog", "Digital", "Data Bus"],
+                            th: ["อะนาล็อก", "ดิจิทัล", "บัสข้อมูล"],
+                            zh: ["模拟", "数字", "数据总线"]
+                        },
+                        answer: 0 // Analog/อะนาล็อก/模拟
+                    }
+                ],
+                next_unit: 'G9_U3' // Leads to Grade 9: Feedback (Closed-Loop Control)
+            },
+            // --- NEW CONTENT FOR GRADE 9, UNIT 3 ---
+            'G9_U3': {
+                title: { 
+                    en: "G9 Unit 3: Feedback & Closed-Loop Control",
+                    th: "G9 หน่วยที่ 3: ฟีดแบ็คและการควบคุมแบบวงปิด",
+                    zh: "九年级第三单元：反馈与闭环控制"
+                },
+                lecture: {
+                    en: "This unit introduces the concept of **Closed-Loop Control**—the basis of all stable automated systems. A closed-loop system uses **Feedback** (sensor reading of the current state) to calculate the **Error** (difference between the goal and current state). The controller then adjusts the actuator to reduce the error. This is a critical prerequisite for PID Control in Grade 10.",
+                    th: "หน่วยนี้แนะนำแนวคิดของ **การควบคุมแบบวงปิด** ซึ่งเป็นพื้นฐานของระบบอัตโนมัติที่เสถียรทั้งหมด ระบบวงปิดใช้ **ฟีดแบ็ค** (ค่าเซ็นเซอร์ของสถานะปัจจุบัน) เพื่อคำนวณ **ค่าความผิดพลาด** (ความแตกต่างระหว่างเป้าหมายกับสถานะปัจจุบัน) จากนั้นตัวควบคุมจะปรับตัวขับเคลื่อนเพื่อลดค่าความผิดพลาด นี่คือข้อกำหนดเบื้องต้นที่สำคัญสำหรับการควบคุมแบบ PID ในเกรด 10",
+                    zh: "本单元介绍**闭环控制**的概念——所有稳定自动化系统的基础。闭环系统使用**反馈**（当前状态的传感器读数）来计算**误差**（目标与当前状态之间的差异）。控制器随后调整执行器以减小误差。这是十年级 PID 控制的关键先决条件。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What term describes the reading used by a controller to check if a command (like moving a motor) was executed correctly?",
+                            th: "คำใดที่อธิบายถึงค่าที่ตัวควบคุมใช้เพื่อตรวจสอบว่าคำสั่ง (เช่น การเคลื่อนย้ายมอเตอร์) ถูกดำเนินการอย่างถูกต้องหรือไม่?",
+                            zh: "哪个术语描述了控制器用于检查命令（例如移动电机）是否正确执行的读数？"
+                        },
+                        options: {
+                            en: ["Error", "Output", "Feedback"],
+                            th: ["ค่าความผิดพลาด", "เอาต์พุต", "ฟีดแบ็ค"],
+                            zh: ["误差", "输出", "反馈"]
+                        },
+                        answer: 2 // Feedback/ฟีดแบ็ค/反馈
+                    },
+                    {
+                        question: {
+                            en: "What is the primary difference between an Open-Loop and a Closed-Loop control system?",
+                            th: "ความแตกต่างหลักระหว่างระบบควบคุมแบบวงเปิดและวงปิดคืออะไร?",
+                            zh: "开环和闭环控制系统之间的主要区别是什么？"
+                        },
+                        options: {
+                            en: ["Closed-Loop uses less power", "Closed-Loop uses sensors (Feedback) to make corrections", "Open-Loop systems are digital"],
+                            th: ["วงปิดใช้พลังงานน้อยกว่า", "วงปิดใช้เซ็นเซอร์ (ฟีดแบ็ค) เพื่อทำการแก้ไข", "ระบบวงเปิดเป็นระบบดิจิทัล"],
+                            zh: ["闭环使用的功率较少", "闭环使用传感器（反馈）进行校正", "开环系统是数字的"]
+                        },
+                        answer: 1 // Closed-Loop uses sensors (Feedback) to make corrections/วงปิดใช้เซ็นเซอร์ (ฟีดแบ็ค) เพื่อทำการแก้ไข/闭环使用传感器（反馈）进行校正
+                    }
+                ],
+                next_unit: 'G10_U1' // Leads to Grade 10: Differential Equations
+            },
+            // --- NEW CONTENT FOR GRADE 10, UNIT 1 ---
+            'G10_U1': {
+                title: { 
+                    en: "G10 Unit 1: Differential Equations (Dynamic Modeling)",
+                    th: "G10 หน่วยที่ 1: สมการเชิงอนุพันธ์ (การจำลองแบบไดนามิก)",
+                    zh: "十年级第一单元：微分方程（动态建模）"
+                },
+                lecture: {
+                    en: "Welcome to Grade 10! We begin the advanced mathematical phase. **Differential Equations (DEs)** are the language of control systems, describing how a system's state (position, velocity) changes over time. Understanding DEs allows engineers to mathematically predict a robot's behavior before writing any code.",
+                    th: "ยินดีต้อนรับสู่เกรด 10! เราเริ่มต้นเฟสทางคณิตศาสตร์ขั้นสูง **สมการเชิงอนุพันธ์ (DEs)** คือภาษาของระบบควบคุม ซึ่งอธิบายว่าสถานะของระบบ (ตำแหน่ง, ความเร็ว) เปลี่ยนแปลงอย่างไรเมื่อเวลาผ่านไป การทำความเข้าใจ DEs ช่วยให้วิศวกรสามารถทำนายพฤติกรรมของหุ่นยนต์ได้ทางคณิตศาสตร์ก่อนที่จะเขียนโค้ดใดๆ",
+                    zh: "欢迎来到十年级！我们开始高级数学阶段。**微分方程（DEs）**是控制系统的语言，描述系统状态（位置、速度）如何随时间变化。理解 DEs 使工程师能够在编写任何代码之前，通过数学方式预测机器人的行为。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "In Mechatronics, what do Differential Equations primarily model?",
+                            th: "ในเมคคาทรอนิกส์ สมการเชิงอนุพันธ์จำลองอะไรเป็นหลัก?",
+                            zh: "在机电一体化中，微分方程主要模拟什么？"
+                        },
+                        options: {
+                            en: ["Digital communication speed", "The dynamic behavior of a physical system", "The cost of components"],
+                            th: ["ความเร็วในการสื่อสารดิจิทัล", "พฤติกรรมไดนามิกของระบบทางกายภาพ", "ต้นทุนของส่วนประกอบ"],
+                            zh: ["数字通信速度", "物理系统的动态行为", "组件的成本"]
+                        },
+                        answer: 1 // The dynamic behavior.../พฤติกรรมไดนามิก.../物理系统的动态行为
+                    },
+                    {
+                        question: {
+                            en: "The key variable that DEs describe change in relation to is always...",
+                            th: "ตัวแปรสำคัญที่ DEs อธิบายการเปลี่ยนแปลงสัมพันธ์กับคืออะไรเสมอ?",
+                            zh: "DEs 描述变化所依据的关键变量始终是..."
+                        },
+                        options: {
+                            en: ["Current (Amperes)", "Time", "Distance"],
+                            th: ["กระแสไฟฟ้า (แอมแปร์)", "เวลา", "ระยะทาง"],
+                            zh: ["电流（安培）", "时间", "距离"]
+                        },
+                        answer: 1 // Time/เวลา/时间
+                    }
+                ],
+                next_unit: 'G10_U2'
+            },
+            // --- NEW CONTENT FOR GRADE 10, UNIT 2 ---
+            'G10_U2': {
+                title: {
+                    en: "G10 Unit 2: PID Control Algorithm",
+                    th: "G10 หน่วยที่ 2: อัลกอริทึมควบคุม PID",
+                    zh: "十年级第二单元：PID 控制算法"
+                },
+                lecture: {
+                    en: "**PID (Proportional-Integral-Derivative)** is the most common and powerful closed-loop algorithm. It calculates the necessary corrective action by summing three terms: **P** (response to current error), **I** (response to accumulated error), and **D** (response to the rate of error change). Tuning these three gains ($\text{K}_p, \text{K}_i, \text{K}_d$) is essential for stable system performance.",
+                    th: "**PID (Proportional-Integral-Derivative)** เป็นอัลกอริทึมควบคุมแบบวงปิดที่พบบ่อยและมีประสิทธิภาพที่สุด มันคำนวณการกระทำแก้ไขที่จำเป็นโดยการรวมสามพจน์: **P** (การตอบสนองต่อข้อผิดพลาดปัจจุบัน), **I** (การตอบสนองต่อข้อผิดพลาดสะสม), และ **D** (การตอบสนองต่ออัตราการเปลี่ยนแปลงของข้อผิดพลาด) การปรับจูนค่าเกนทั้งสามนี้ ($\text{K}_p, \text{K}_i, \text{K}_d$) มีความสำคัญต่อประสิทธิภาพของระบบที่เสถียร",
+                    zh: "**PID（比例-积分-微分）**是最常见和最强大的闭环控制算法。它通过对三个项求和来计算必要的校正动作：**P**（对当前误差的响应）、**I**（对累积误差的响应）和 **D**（对误差变化率的响应）。调整这三个增益 ($\text{K}_p, \text{K}_i, \text{K}_d$) 对于稳定的系统性能至关重要。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "Which term in the PID algorithm responds to the current difference between the setpoint and the measured value?",
+                            th: "พจน์ใดในอัลกอริทึม PID ที่ตอบสนองต่อความแตกต่างปัจจุบันระหว่างค่าที่กำหนดและค่าที่วัดได้?",
+                            zh: "PID 算法中的哪个项响应设定点与测量值之间的当前差异？"
+                        },
+                        options: {
+                            en: ["Derivative (D)", "Integral (I)", "Proportional (P)"],
+                            th: ["อนุพันธ์ (D)", "อินทิกรัล (I)", "สัดส่วน (P)"],
+                            zh: ["微分 (D)", "积分 (I)", "比例 (P)"]
+                        },
+                        answer: 2 // Proportional (P)/สัดส่วน (P)/比例 (P)
+                    },
+                    {
+                        question: {
+                            en: "If a system is oscillating rapidly (unstable), which gain is often reduced as a first step?",
+                            th: "หากระบบสั่นอย่างรวดเร็ว (ไม่เสถียร) เกนใดที่มักจะถูกลดเป็นขั้นตอนแรก?",
+                            zh: "如果系统快速振荡（不稳定），通常首先减少哪个增益？"
+                        },
+                        options: {
+                            en: ["Integral ($\text{K}_i$)", "Proportional ($\text{K}_p$)", "Derivative ($\text{K}_d$)"],
+                            th: ["อินทิกรัล ($\text{K}_i$)", "สัดส่วน ($\text{K}_p$)", "อนุพันธ์ ($\text{K}_d$)"],
+                            zh: ["积分 ($\text{K}_i$)", "比例 ($\text{K}_p$)", "微分 ($\text{K}_d$)"]
+                        },
+                        answer: 1 // Proportional (K_p)/สัดส่วน (K_p)/比例 (K_p)
+                    }
+                ],
+                next_unit: 'G10_U3'
+            },
+            // --- NEW CONTENT FOR GRADE 10, UNIT 3 ---
+            'G10_U3': {
+                title: { 
+                    en: "G10 Unit 3: Digital Communication Protocols (I2C/SPI)",
+                    th: "G10 หน่วยที่ 3: โปรโตคอลการสื่อสารดิจิทัล (I2C/SPI)",
+                    zh: "十年级第三单元：数字通信协议 (I2C/SPI)"
+                },
+                lecture: {
+                    en: "In advanced mechatronics, the MCU must speak to multiple complex components (sensors, drivers) simultaneously. This requires standardized digital communication. We study **I2C** (Inter-Integrated Circuit) and **SPI** (Serial Peripheral Interface), understanding how the Master/Slave relationship allows the MCU to efficiently send and receive data across multiple devices using minimal wires.",
+                    th: "ในเมคคาทรอนิกส์ขั้นสูง MCU ต้องสื่อสารกับส่วนประกอบที่ซับซ้อนหลายตัวพร้อมกัน (เซ็นเซอร์, ไดรเวอร์) ซึ่งต้องใช้การสื่อสารดิจิทัลที่เป็นมาตรฐาน เราจะศึกษา **I2C** (วงจรรวมระหว่างกัน) และ **SPI** (อินเทอร์เฟซอุปกรณ์ต่อพ่วงแบบอนุกรม) โดยทำความเข้าใจว่าความสัมพันธ์แบบ Master/Slave ช่วยให้ MCU สามารถส่งและรับข้อมูลข้ามอุปกรณ์หลายตัวได้อย่างมีประสิทธิภาพโดยใช้สายไฟน้อยที่สุด",
+                    zh: "在高级机电一体化中，MCU 必须与多个复杂组件（传感器、驱动器）同时通信。这需要标准化的数字通信。我们研究 **I2C**（集成电路间）和 **SPI**（串行外设接口），了解主/从关系如何让 MCU 使用最少的电线有效地跨多个设备发送和接收数据。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "Which protocol uses only two signal wires (SCL for Clock and SDA for Data) to communicate with many devices?",
+                            th: "โปรโตคอลใดที่ใช้สายสัญญาณเพียงสองเส้น (SCL สำหรับนาฬิกา และ SDA สำหรับข้อมูล) เพื่อสื่อสารกับอุปกรณ์หลายตัว?",
+                            zh: "哪种协议仅使用两根信号线（SCL 用于时钟，SDA 用于数据）与多个设备通信？"
+                        },
+                        options: {
+                            en: ["SPI", "I2C", "UART"],
+                            th: ["SPI", "I2C", "UART"],
+                            zh: ["SPI", "I2C", "UART"]
+                        },
+                        answer: 1 // I2C/I2C/I2C
+                    },
+                    {
+                        question: {
+                            en: "Which protocol is typically faster, operating with separate data lines (MOSI and MISO)?",
+                            th: "โปรโตคอลใดที่มักจะเร็วกว่า โดยทำงานด้วยสายข้อมูลแยกกัน (MOSI และ MISO)?",
+                            zh: "哪种协议通常更快，使用独立的数据线（MOSI 和 MISO）进行操作？"
+                        },
+                        options: {
+                            en: ["I2C", "SPI", "CAN"],
+                            th: ["I2C", "SPI", "CAN"],
+                            zh: ["I2C", "SPI", "CAN"]
+                        },
+                        answer: 1 // SPI/SPI/SPI
+                    }
+                ],
+                next_unit: 'G11_U1' // Leads to Grade 11: Kinematics
+            },
+            // --- NEW CONTENT FOR GRADE 11, UNIT 1 ---
+            'G11_U1': {
+                title: { 
+                    en: "G11 Unit 1: Kinematics (Forward & Inverse)",
+                    th: "G11 หน่วยที่ 1: จลนศาสตร์ (ไปข้างหน้าและผกผัน)",
+                    zh: "十一年级第一单元：运动学（正向与逆向）"
+                },
+                lecture: {
+                    en: "The study of **Kinematics** defines the geometry of motion without considering forces. **Forward Kinematics** calculates the end-effector position based on joint angles. **Inverse Kinematics** calculates the required joint angles to reach a desired position. This is the foundational mathematics for programming robotic arms.",
+                    th: "การศึกษา **จลนศาสตร์** กำหนดรูปทรงเรขาคณิตของการเคลื่อนที่โดยไม่คำนึงถึงแรง **จลนศาสตร์ไปข้างหน้า** คำนวณตำแหน่งปลายแขนกลตามมุมข้อต่อ **จลนศาสตร์ผกผัน** คำนวณมุมข้อต่อที่ต้องการเพื่อให้บรรลุตำแหน่งที่ต้องการ นี่คือคณิตศาสตร์พื้นฐานสำหรับการเขียนโปรแกรมแขนหุ่นยนต์",
+                    zh: " **运动学**研究的是不考虑力的运动几何学。**正向运动学**根据关节角度计算末端执行器的位置。**逆向运动学**计算达到所需位置所需的关节角度。这是编写机械臂程序的基础数学。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "Which type of kinematics calculates the final position of the robot's end-effector given all joint angles?",
+                            th: "จลนศาสตร์ประเภทใดที่คำนวณตำแหน่งสุดท้ายของปลายแขนกลของหุ่นยนต์ โดยกำหนดมุมข้อต่อทั้งหมด?",
+                            zh: "哪种运动学类型根据所有关节角度计算机器人的末端执行器的最终位置？"
+                        },
+                        options: {
+                            en: ["Inverse Kinematics", "Forward Kinematics", "Dynamic Kinematics"],
+                            th: ["จลนศาสตร์ผกผัน", "จลนศาสตร์ไปข้างหน้า", "จลนศาสตร์แบบไดนามิก"],
+                            zh: ["逆向运动学", "正向运动学", "动态运动学"]
+                        },
+                        answer: 1 
+                    },
+                    {
+                        question: {
+                            en: "The mathematical model of Kinematics ignores which physical property?",
+                            th: "แบบจำลองทางคณิตศาสตร์ของจลนศาสตร์ละเว้นคุณสมบัติทางกายภาพใด?",
+                            zh: "运动学的数学模型忽略了哪个物理属性？"
+                        },
+                        options: {
+                            en: ["Joint Position", "Forces and Mass", "Link Lengths"],
+                            th: ["ตำแหน่งข้อต่อ", "แรงและมวล", "ความยาวของข้อต่อ"],
+                            zh: ["关节位置", "力和质量", "连杆长度"]
+                        },
+                        answer: 1
+                    }
+                ],
+                next_unit: 'G11_U2'
+            },
+            // --- NEW CONTENT FOR GRADE 11, UNIT 2 ---
+            'G11_U2': {
+                title: {
+                    en: "G11 Unit 2: Root Locus (Stability Analysis)",
+                    th: "G11 หน่วยที่ 2: รากฐาน (การวิเคราะห์ความเสถียร)",
+                    zh: "十一年级第二单元：根轨迹（稳定性分析）"
+                },
+                lecture: {
+                    en: "The **Root Locus** is a critical graphical method used to analyze how a system’s poles (the roots of the characteristic equation) move as the controller gain ($\text{K}$) is varied from zero to infinity. If any root crosses into the right-half of the complex plane, the system becomes **unstable**. This plot helps engineers tune controllers for stable performance.",
+                    th: " **รากฐาน (Root Locus)** เป็นวิธีการทางกราฟิกที่สำคัญที่ใช้ในการวิเคราะห์ว่าเสาของระบบ (รากของสมการลักษณะเฉพาะ) เคลื่อนที่อย่างไรเมื่อค่าเกนของตัวควบคุม ($\text{K}$) ถูกปรับเปลี่ยนจากศูนย์ถึงอนันต์ หากรากใดข้ามไปในระนาบซีกขวา ระบบจะ **ไม่เสถียร** พล็อตนี้ช่วยให้วิศวกรปรับแต่งตัวควบคุมเพื่อให้ได้ประสิทธิภาพที่เสถียร",
+                    zh: "**根轨迹 (Root Locus)** 是一种重要的图形方法，用于分析当控制器增益 ($\text{K}$) 从零变化到无穷大时，系统的极点（特征方程的根）如何移动。如果任何根进入复平面的右半部分，系统就会变得**不稳定**。该图有助于工程师调整控制器以实现稳定的性能。",
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What is the primary objective of creating a Root Locus plot?",
+                            th: "วัตถุประสงค์หลักของการสร้างพล็อต Root Locus คืออะไร?",
+                            zh: "创建根轨迹图的主要目的是什么？"
+                        },
+                        options: {
+                            en: ["To find the required power input", "To determine the system’s stability margin", "To calculate mechanical stress"],
+                            th: ["เพื่อค้นหาอินพุตกำลังที่ต้องการ", "เพื่อกำหนดขอบเขตความเสถียรของระบบ", "เพื่อคำนวณความเค้นทางกล"],
+                            zh: ["寻找所需的功率输入", "确定系统的稳定性裕度", "计算机械应力"]
+                        },
+                        answer: 1 // To determine the system’s stability margin / เพื่อกำหนดขอบเขตความเสถียรของระบบ / 确定系统的稳定性裕度
+                    },
+                    {
+                        question: {
+                            en: "A control system becomes unstable if a pole crosses into which side of the s-plane?",
+                            th: "ระบบควบคุมจะกลายเป็นไม่เสถียรหากเสาข้ามไปยังด้านใดของระนาบ s?",
+                            zh: "如果极点进入 s 平面的哪一侧，控制系统将变得不稳定？"
+                        },
+                        options: {
+                            en: ["Left-Half", "Right-Half", "Imaginary Axis"],
+                            th: ["ซีกซ้าย", "ซีกขวา", "แกนจินตภาพ"],
+                            zh: ["左半边", "右半边", "虚轴"]
+                        },
+                        answer: 1 // Right-Half/ซีกขวา/右半边
+                    }
+                ],
+                next_unit: 'G11_U3' // Leads to G11: Computer Vision
+            },
+            // --- NEW CONTENT FOR GRADE 11, UNIT 3 ---
+            'G11_U3': {
+                title: { 
+                    en: "G11 Unit 3: Computer Vision (Perception)",
+                    th: "G11 หน่วยที่ 3: คอมพิวเตอร์วิทัศน์ (การรับรู้)",
+                    zh: "十一年级第三单元：计算机视觉（感知）"
+                },
+                lecture: {
+                    en: "**Computer Vision** allows machines to 'see' and interpret the world using image data. We cover basic topics like **Edge Detection**, **Thresholding**, and converting raw camera input into meaningful data (e.g., locating an object). This provides the critical input layer for autonomous systems.",
+                    th: "**คอมพิวเตอร์วิทัศน์** ช่วยให้เครื่องจักร 'มองเห็น' และตีความโลกโดยใช้ข้อมูลภาพ เราครอบคลุมหัวข้อพื้นฐาน เช่น **การตรวจจับขอบ**, **การกำหนดเกณฑ์**, และการแปลงข้อมูลดิบจากกล้องให้เป็นข้อมูลที่มีความหมาย (เช่น การระบุตำแหน่งของวัตถุ) นี่เป็นเลเยอร์อินพุตที่สำคัญสำหรับระบบอัตโนมัติ",
+                    zh: "**计算机视觉**允许机器使用图像数据'看到'和解释世界。我们涵盖了诸如**边缘检测**、**阈值处理**以及将原始相机输入转换为有意义数据（例如定位物体）等基本主题。这为自主系统提供了关键的输入层。"
+                },
+                quiz: [
+                    {
+                        question: {
+                            en: "What is the key purpose of 'Thresholding' in image processing?",
+                            th: "วัตถุประสงค์หลักของ 'การกำหนดเกณฑ์' ในการประมวลผลภาพคืออะไร?",
+                            zh: "图像处理中 '阈值处理' 的主要目的是什么？"
+                        },
+                        options: {
+                            en: ["To add color depth", "To simplify the image into binary (black/white) data", "To increase resolution"],
+                            th: ["เพื่อเพิ่มความลึกของสี", "เพื่อทำให้ภาพง่ายขึ้นเป็นข้อมูลไบนารี (ขาว/ดำ)", "เพื่อเพิ่มความละเอียด"],
+                            zh: ["增加颜色深度", "将图像简化为二值（黑/白）数据", "提高分辨率"]
+                        },
+                        answer: 1 
+                    },
+                    {
+                        question: {
+                            en: "In the Input-Process-Output (IPO) loop of a robotic system, Computer Vision serves as the...",
+                            th: "ในวงจร Input-Process-Output (IPO) ของระบบหุ่นยนต์ คอมพิวเตอร์วิทัศน์ทำหน้าที่เป็น...",
+                            zh: "在机器人系统的输入-处理-输出 (IPO) 循环中，计算机视觉充当..."
+                        },
+                        options: {
+                            en: ["Output (Actuator)", "Process (Controller)", "Input (Sensor/Perception)"],
+                            th: ["เอาต์พุต (ตัวขับเคลื่อน)", "การประมวลผล (ตัวควบคุม)", "อินพุต (เซ็นเซอร์/การรับรู้)"],
+                            zh: ["输出（执行器）", "处理（控制器）", "输入（传感器/感知）"]
+                        },
+                        answer: 2
+                    }
+                ],
+                next_unit: 'G12_U1' // Leads to Grade 12: State-Space Modeling
+            }
+        };
+
+        const ALL_UNITS = Object.keys(CURRICULUM);
+
+
+        // --- FIREBASE INITIALIZATION AND AUTHENTICATION ---
+
+        async function initFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.error("Firebase config is missing. Using local storage for progress tracking.");
+                    // Fallback to local storage if running outside Canvas environment
+                    userId = crypto.randomUUID();
+                    document.getElementById('auth-status').textContent = `Status: Local Mode (ID: ${userId.substring(0, 8)}...)`;
+                    loadLocalProgress();
+                    return;
+                }
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Authenticate user
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('auth-status').textContent = `Status: Logged In (User ID: ${userId})`;
+                        setupProgressListener();
+                    } else {
+                        // This should ideally not happen if using anonymous/custom token
+                        console.warn("User signed out unexpectedly.");
+                    }
+                });
+            } catch (error) {
+                console.error("Error during Firebase initialization or sign-in:", error);
+                document.getElementById('auth-status').textContent = `Error: Cannot connect to Firebase.`;
+            }
+        }
+
+        // --- FIRESTORE / PROGRESS HANDLING ---
+
+        function getProgressDocRef(uid) {
+            return doc(db, `artifacts/${appId}/users/${uid}/progress/mechatronics_state`);
+        }
+
+        function setupProgressListener() {
+            if (!db || !userId) return;
+
+            const docRef = getProgressDocRef(userId);
+
+            // Set up real-time listener for user progress
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    userProgress = docSnap.data();
+                    currentUnitId = userProgress.current_unit || 'G7_U1';
+                    // Ensure scores map exists when data is loaded from Firestore
+                    if (!userProgress.scores) {
+                         userProgress.scores = {};
+                    }
+                    console.log("Progress loaded:", userProgress);
+                } else {
+                    // Initialize progress if document doesn't exist
+                    userProgress = { 
+                        current_unit: 'G7_U1', 
+                        scores: {} 
+                    };
+                    setDoc(docRef, userProgress).catch(e => console.error("Error initializing progress:", e));
+                }
+                renderDashboard();
+                loadUnit(currentUnitId); // Load the student's current unit upon login/progress update
+            }, (error) => {
+                console.error("Error fetching progress:", error);
+                // Fallback attempt (using local storage principles for display)
+                loadLocalProgress(); 
+                renderDashboard();
+            });
+        }
+        
+        // --- LOCAL STORAGE FALLBACK (For testing/dev environment outside of Canvas) ---
+        function loadLocalProgress() {
+            const storedProgress = localStorage.getItem('mechatronicsProgress');
+            if (storedProgress) {
+                userProgress = JSON.parse(storedProgress);
+                currentUnitId = userProgress.current_unit || 'G7_U1';
+                // Ensure scores map exists
+                if (!userProgress.scores) {
+                    userProgress.scores = {};
+                }
+            } else {
+                 userProgress = { 
+                    current_unit: 'G7_U1', 
+                    scores: {} 
+                };
+            }
+        }
+        function saveProgress() {
+            if (db && userId) {
+                const docRef = getProgressDocRef(userId);
+                setDoc(docRef, userProgress, { merge: true }).catch(e => console.error("Error saving progress:", e));
+            } else {
+                localStorage.setItem('mechatronicsProgress', JSON.stringify(userProgress));
+            }
+        }
+
+
+        // --- UI RENDERING AND INTERACTION ---
+
+        window.setLanguage = (lang) => {
+            currentLanguage = lang;
+            document.getElementById('language-display').textContent = `Language: ${lang.toUpperCase()}`;
+            renderDashboard();
+            loadUnit(currentUnitId); // Reload the current unit content in the new language
+        };
+
+        function renderDashboard() {
+            const unitListDiv = document.getElementById('unit-list');
+            unitListDiv.innerHTML = '';
+            let isCurrentUnitUnlocked = true; // Assume G7_U1 is unlocked
+
+            ALL_UNITS.forEach((unitId, index) => {
+                const unitData = CURRICULUM[unitId];
+                if (!unitData) return;
+
+                const isLocked = !isCurrentUnitUnlocked;
+                // FIX: userProgress.scores is guaranteed to exist now due to initialization
+                const isPassed = userProgress.scores[unitId] === 100; 
+                
+                const title = unitData.title[currentLanguage] || unitData.title['en'];
+
+                const cardClass = isLocked ? 'locked-unit bg-gray-100' : 'unlocked-card bg-white hover:bg-gray-50';
+                const statusIcon = isPassed ? '✅' : (isLocked ? '🔒' : '▶️');
+                const titleColor = isPassed ? 'text-secondary-color' : 'text-gray-700';
+                
+                const unitCard = document.createElement('div');
+                unitCard.className = `course-card p-4 rounded-lg shadow-sm flex items-center justify-between ${cardClass}`;
+                unitCard.innerHTML = `
+                    <div>
+                        <p class="text-sm font-medium ${titleColor}">${title}</p>
+                        <p class="text-xs text-gray-400">${isLocked ? 'Locked - Pass previous unit' : 'Click to View'}</p>
+                    </div>
+                    <span class="text-2xl">${statusIcon}</span>
+                `;
+
+                if (!isLocked) {
+                    unitCard.onclick = () => loadUnit(unitId);
+                }
+                unitListDiv.appendChild(unitCard);
+                
+                // If this unit hasn't passed, the next one should be locked
+                if (!isPassed) {
+                    isCurrentUnitUnlocked = false;
+                }
+            });
+        }
+
+        window.loadUnit = (unitId) => {
+            const unitData = CURRICULUM[unitId];
+            if (!unitData) return;
+
+            const isPassed = userProgress.scores[unitId] === 100;
+            const title = unitData.title[currentLanguage] || unitData.title['en'];
+            const lectureText = unitData.lecture[currentLanguage] || unitData.lecture['en'];
+
+            document.getElementById('unit-title').textContent = title;
+            document.getElementById('lecture-text').innerHTML = lectureText;
+            
+            // Check if this unit is the student's *next* unit to complete
+            const isUnlockable = (unitId === currentUnitId) || isPassed;
+
+            // Only show the quiz for the unit the user is currently working on
+            if (isUnlockable && !isPassed) {
+                renderQuiz(unitData.quiz, unitId);
+            } else {
+                document.getElementById('quiz-area').classList.add('hidden');
+                document.getElementById('lecture-content').classList.remove('hidden');
+                if (isPassed) {
+                    document.getElementById('lecture-content').innerHTML += `<p class="mt-4 text-center text-xl font-bold text-secondary-color">✅ UNIT COMPLETE! You are ready for the next lesson.</p>`;
+                }
+            }
+            currentUnitId = unitId;
+        };
+        
+        function renderQuiz(questions, unitId) {
+            const quizArea = document.getElementById('quiz-area');
+            const quizQuestionsDiv = document.getElementById('quiz-questions');
+            quizQuestionsDiv.innerHTML = '';
+            
+            if (!questions || questions.length === 0) {
+                 quizArea.classList.add('hidden');
+                 return;
+            }
+
+            questions.forEach((q, qIndex) => {
+                const qDiv = document.createElement('div');
+                qDiv.className = 'border p-4 rounded-lg bg-white';
+                
+                const questionText = q.question[currentLanguage] || q.question['en'];
+                qDiv.innerHTML = `<p class="font-semibold mb-3 text-lg">${qIndex + 1}. ${questionText}</p>`;
+                
+                q.options[currentLanguage].forEach((optionText, oIndex) => {
+                    const optionId = `q${qIndex}-o${oIndex}`;
+                    const label = document.createElement('label');
+                    label.className = 'block mt-2 cursor-pointer hover:bg-gray-100 p-2 rounded';
+                    label.innerHTML = `
+                        <input type="radio" name="quiz-q${qIndex}" id="${optionId}" value="${oIndex}" class="mr-2 accent-primary-color">
+                        ${optionText}
+                    `;
+                    qDiv.appendChild(label);
+                });
+                quizQuestionsDiv.appendChild(qDiv);
+            });
+            
+            quizArea.classList.remove('hidden');
+            document.getElementById('quiz-feedback').textContent = '';
+            document.getElementById('submit-quiz-btn').disabled = false;
+        }
+
+        window.submitQuiz = () => {
+            const questions = CURRICULUM[currentUnitId].quiz;
+            let correctCount = 0;
+            const totalQuestions = questions.length;
+
+            questions.forEach((q, qIndex) => {
+                const selectedOption = document.querySelector(`input[name="quiz-q${qIndex}"]:checked`);
+                if (selectedOption && parseInt(selectedOption.value) === q.answer) {
+                    correctCount++;
+                }
+            });
+
+            const feedback = document.getElementById('quiz-feedback');
+            const submitButton = document.getElementById('submit-quiz-btn');
+            
+            if (correctCount === totalQuestions) {
+                feedback.className = 'mt-4 text-center text-xl font-bold text-secondary-color';
+                feedback.textContent = `PERFECT! (${correctCount}/${totalQuestions}) - $100\%$ PASSED. Unlocking next unit...`;
+                submitButton.disabled = true;
+                
+                // Update Firebase/Local Progress
+                userProgress.scores[currentUnitId] = 100;
+                userProgress.current_unit = CURRICULUM[currentUnitId].next_unit;
+                saveProgress();
+                
+                // Wait briefly then reload the dashboard to show unlocked unit
+                setTimeout(() => renderDashboard(), 1500);
+
+            } else {
+                feedback.className = 'mt-4 text-center text-xl font-bold text-red-600';
+                feedback.textContent = `INCORRECT. (${correctCount}/${totalQuestions}). You must achieve $100\%$ to proceed. Please review the lecture and try again.`;
+            }
+        };
+
+        // Initialize the app
+        initFirebase();
+        renderDashboard(); // Initial render while waiting for Firebase
+    </script>
+</body>
 </html>
