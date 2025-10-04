@@ -78,7 +78,7 @@
                 <button onclick="setLanguage('th')" class="flag-button p-2 rounded-full border border-gray-300 bg-white shadow-sm" title="Thai">
                     <span class="text-2xl">🇹🇭</span>
                 </button>
-                <button onclick="setLanguage('zh')" class="flag-button p-2 rounded-full border border-gray-300 bg-white shadow-sm" title="Mandarin">
+                <button onclick="setLanguage('zh')" class="flag-button p-2 rounded-full border border-gray-300 bg-white shadow-sm" title="Traditional Chinese">
                     <span class="text-2xl">🇹🇼</span>
                 </button>
             </div>
@@ -132,42 +132,42 @@
         // --- CURRICULUM DATA ---
         const CURRICULUM = {
             'G7_U1': {
-                title: { en: "G7 Unit 1: Simple Machines & Force Transfer", th: "G7 หน่วยที่ 1: เครื่องจักรกลอย่างง่ายและการถ่ายโอนแรง", zh: "七年级第一单元：简单机械与力传递"},
-                lecture: { en: "This unit is the foundation of Mechanical Systems...", th: "หน่วยนี้คือรากฐานของระบบกลไก...", zh: "本单元是机械系统的基础..."},
+                title: { en: "G7 Unit 1: Simple Machines & Force Transfer", th: "G7 หน่วยที่ 1: เครื่องจักรกลอย่างง่ายและการถ่ายโอนแรง", zh: "七年級第一單元：簡單機械與力傳遞"},
+                lecture: { en: "This unit is the foundation of Mechanical Systems...", th: "หน่วยนี้คือรากฐานของระบบกลไก...", zh: "本單元是機械系統的基礎..."},
                 youtube: "https://www.youtube.com/embed/fvOmaf2GfCY",
                 quiz: [
-                    { question: { en: "Which simple machine multiplies force...?", th: "เครื่องจักรกลอย่างง่ายใดที่ช่วยเพิ่มแรง...?", zh: "哪种简单机械可以增大作用力...?" }, options: { en: ["Pulley", "Gear", "Lever"], th: ["รอก", "เฟือง", "คาน"], zh: ["滑轮", "齿轮", "杠杆"]}, answer: 2 },
-                    { question: { en: "What is the primary role of a gear system...?", th: "บทบาทหลักของระบบเฟือง...?", zh: "齿轮系统在机电一体化中的主要作用...?" }, options: { en: ["Generate electricity", "Store data", "Transfer and change speed/torque"], th: ["ผลิตไฟฟ้า", "จัดเก็บข้อมูล", "ถ่ายโอนและเปลี่ยนความเร็ว/แรงบิด"], zh: ["发电", "储存数据", "传输和改变速度/扭矩"]}, answer: 2 }
+                    { question: { en: "Which simple machine multiplies force...?", th: "เครื่องจักรกลอย่างง่ายใดที่ช่วยเพิ่มแรง...?", zh: "哪種簡單機械可以增大作用力...?" }, options: { en: ["Pulley", "Gear", "Lever"], th: ["รอก", "เฟือง", "คาน"], zh: ["滑輪", "齒輪", "槓桿"]}, answer: 2 },
+                    { question: { en: "What is the primary role of a gear system...?", th: "บทบาทหลักของระบบเฟือง...?", zh: "齒輪系統在機電一體化中的主要作用...?" }, options: { en: ["Generate electricity", "Store data", "Transfer and change speed/torque"], th: ["ผลิตไฟฟ้า", "จัดเก็บข้อมูล", "ถ่ายโอนและเปลี่ยนความเร็ว/แรงบิด"], zh: ["發電", "儲存數據", "傳輸和改變速度/扭矩"]}, answer: 2 }
                 ],
                 next_unit: 'G7_U2'
             },
             'G7_U2': {
-                title: { en: "G7 Unit 2: Basic Circuits & Components", th: "G7 หน่วยที่ 2: วงจรพื้นฐานและส่วนประกอบ", zh: "七年级第二单元：基础电路与元件"},
-                lecture: { en: "In this unit, we introduce the flow of energy...", th: "ในหน่วยนี้ เราจะแนะนำการไหลของพลังงาน...", zh: "在本单元中，我们介绍能量的流动..."},
+                title: { en: "G7 Unit 2: Basic Circuits & Components", th: "G7 หน่วยที่ 2: วงจรพื้นฐานและส่วนประกอบ", zh: "七年級第二單元：基礎電路與元件"},
+                lecture: { en: "In this unit, we introduce the flow of energy...", th: "ในหน่วยนี้ เราจะแนะนำการไหลของพลังงาน...", zh: "在本單元中，我們介紹能量的流動..."},
                 youtube: "https://www.youtube.com/embed/vYpolxA12-Y",
                 quiz: [
-                    { question: { en: "What component limits the flow of current...?", th: "ส่วนประกอบใดจำกัดการไหลของกระแสไฟฟ้า...?", zh: "哪个元件用于限制电路中的电流...?" }, options: { en: ["LED", "Resistor", "Switch"], th: ["LED", "ตัวต้านทาน", "สวิตช์"], zh: ["LED", "电阻", "开关"]}, answer: 1 },
-                    { question: { en: "What is the unit of measure for electrical resistance?", th: "หน่วยวัดความต้านทานไฟฟ้าคืออะไร?", zh: "电阻 的单位是什么？" }, options: { en: ["Volt", "Ohm", "Ampere"], th: ["โวลต์", "โอห์ม", "แอมแปร์"], zh: ["伏特", "欧姆", "安培"]}, answer: 1 }
+                    { question: { en: "What component limits the flow of current...?", th: "ส่วนประกอบใดจำกัดการไหลของกระแสไฟฟ้า...?", zh: "哪個元件用於限制電路中的電流...?" }, options: { en: ["LED", "Resistor", "Switch"], th: ["LED", "ตัวต้านทาน", "สวิตช์"], zh: ["LED", "電阻", "開關"]}, answer: 1 },
+                    { question: { en: "What is the unit of measure for electrical resistance?", th: "หน่วยวัดความต้านทานไฟฟ้าคืออะไร?", zh: "電阻的單位是什麼？" }, options: { en: ["Volt", "Ohm", "Ampere"], th: ["โวลต์", "โอห์ม", "แอมแปร์"], zh: ["伏特", "歐姆", "安培"]}, answer: 1 }
                 ],
                 next_unit: 'G7_U3'
             },
             'G7_U3': {
-                title: { en: "G7 Unit 3: Block-Based Coding Logic", th: "G7 หน่วยที่ 3: ตรรกะการเขียนโค้ดแบบบล็อก", zh: "七年级第三单元：积木式编程逻辑"},
-                lecture: { en: "The final pillar: Control...", th: "เสาหลักสุดท้าย: การควบคุม...", zh: "最后一根支柱：控制..."},
+                title: { en: "G7 Unit 3: Block-Based Coding Logic", th: "G7 หน่วยที่ 3: ตรรกะการเขียนโค้ดแบบบล็อก", zh: "七年級第三單元：積木式編程邏輯"},
+                lecture: { en: "The final pillar: Control...", th: "เสาหลักสุดท้าย: การควบคุม...", zh: "最後一根支柱：控制..."},
                 youtube: "https://www.youtube.com/embed/hsHsq433T-o",
                 quiz: [
-                    { question: { en: "What is the primary function of an 'IF/THEN' block?", th: "หน้าที่หลักของบล็อก 'IF/THEN' คืออะไร?", zh: "‘IF/THEN’ 模块的主要功能是什么？" }, options: { en: ["Repeating a task", "Making a decision", "Storing a value"], th: ["ทำซ้ำงาน", "ตัดสินใจ", "จัดเก็บค่า"], zh: ["重复任务", "做出决定", "存储数值"]}, answer: 1 },
-                    { question: { en: "Which concept involves running a sequence of code steps one after the other?", th: "แนวคิดใดที่เกี่ยวข้องกับการรันขั้นตอนโค้ดตามลำดับทีละขั้นตอน?", zh: "哪个概念涉及按顺序运行一系列代码步骤？" }, options: { en: ["Looping", "Debugging", "Sequencing"], th: ["การวนซ้ำ", "การแก้ไขจุดบกพร่อง", "การเรียงลำดับ"], zh: ["循环", "调试", "序列"]}, answer: 2 }
+                    { question: { en: "What is the primary function of an 'IF/THEN' block?", th: "หน้าที่หลักของบล็อก 'IF/THEN' คืออะไร?", zh: "‘IF/THEN’ 模組的主要功能是什麼？" }, options: { en: ["Repeating a task", "Making a decision", "Storing a value"], th: ["ทำซ้ำงาน", "ตัดสินใจ", "จัดเก็บค่า"], zh: ["重複任務", "做出決定", "儲存數值"]}, answer: 1 },
+                    { question: { en: "Which concept involves running a sequence of code steps one after the other?", th: "แนวคิดใดที่เกี่ยวข้องกับการรันขั้นตอนโค้ดตามลำดับทีละขั้นตอน?", zh: "哪個概念涉及按順序運行一系列程式碼步驟？" }, options: { en: ["Looping", "Debugging", "Sequencing"], th: ["การวนซ้ำ", "การแก้ไขจุดบกพร่อง", "การเรียงลำดับ"], zh: ["循環", "除錯", "序列"]}, answer: 2 }
                 ],
                 next_unit: 'G8_U1'
             },
              'G8_U1': {
-                title: { en: "G8 Unit 1: Introduction to Microcontrollers (MCU)", th: "G8 หน่วยที่ 1: บทนำสู่ไมโครคอนโทรลเลอร์ (MCU)", zh: "八年级第一单元：微控制器 (MCU) 入门"},
-                lecture: { en: "Congratulations on completing G7! G8 focuses on the **Microcontroller (MCU)**...", th: "ขอแสดงความยินดีที่เรียน G7 จบ! G8 เน้นที่ **ไมโครคอนโทรลเลอร์ (MCU)**...", zh: "恭喜您完成七年级！八年级重点学习**微控制器（MCU）**..."},
+                title: { en: "G8 Unit 1: Introduction to Microcontrollers (MCU)", th: "G8 หน่วยที่ 1: บทนำสู่ไมโครคอนโทรลเลอร์ (MCU)", zh: "八年級第一單元：微控制器 (MCU) 入門"},
+                lecture: { en: "Congratulations on completing G7! G8 focuses on the **Microcontroller (MCU)**...", th: "ขอแสดงความยินดีที่เรียน G7 จบ! G8 เน้นที่ **ไมโครคอนโทรลเลอร์ (MCU)**...", zh: "恭喜您完成七年級！八年級重點學習**微控制器（MCU）**..."},
                 youtube: "https://www.youtube.com/embed/j_sD_o4Y_d8",
                 quiz: [
-                    { question: { en: "What is the primary function of the Microcontroller in a mechatronics system?", th: "หน้าที่หลักของไมโครคอนโทรลเลอร์ในระบบเมคคาทรอนิกส์คืออะไร?", zh: "微控制器在机电一体化系统中的主要功能是什么？" }, options: { en: ["Storage of large files", "Processing logic and control signals", "Providing power to motors"], th: ["จัดเก็บไฟล์ขนาดใหญ่", "ประมวลผลตรรกะและสัญญาณควบคุม", "จ่ายพลังงานให้กับมอเตอร์"], zh: ["存储大型文件", "处理逻辑和控制信号", "为电机供电"]}, answer: 1 },
-                    { question: { en: "When programming an Arduino MCU, what does 'Digital Output' typically refer to?", th: "เมื่อเขียนโปรแกรม Arduino MCU, 'เอาต์พุตดิจิทัล' โดยทั่วไปหมายถึงอะไร?", zh: "编程 Arduino MCU 时，'数字输出'通常指什么？" }, options: { en: ["Reading a sensor value", "Turning a component ON or OFF (HIGH/LOW)", "Translating the language"], th: ["การอ่านค่าเซ็นเซอร์", "การเปิดหรือปิดส่วนประกอบ (HIGH/LOW)", "การแปลภาษา"], zh: ["读取传感器值", "打开或关闭组件（HIGH/LOW）", "翻译语言"]}, answer: 1 }
+                    { question: { en: "What is the primary function of the Microcontroller in a mechatronics system?", th: "หน้าที่หลักของไมโครคอนโทรลเลอร์ในระบบเมคคาทรอนิกส์คืออะไร?", zh: "微控制器在機電一體化系統中的主要功能是什麼？" }, options: { en: ["Storage of large files", "Processing logic and control signals", "Providing power to motors"], th: ["จัดเก็บไฟล์ขนาดใหญ่", "ประมวลผลตรรกะและสัญญาณควบคุม", "จ่ายพลังงานให้กับมอเตอร์"], zh: ["儲存大型文件", "處理邏輯和控制訊號", "為馬達供電"]}, answer: 1 },
+                    { question: { en: "When programming an Arduino MCU, what does 'Digital Output' typically refer to?", th: "เมื่อเขียนโปรแกรม Arduino MCU, 'เอาต์พุตดิจิทัล' โดยทั่วไปหมายถึงอะไร?", zh: "編程 Arduino MCU 時，'數位輸出'通常指什麼？" }, options: { en: ["Reading a sensor value", "Turning a component ON or OFF (HIGH/LOW)", "Translating the language"], th: ["การอ่านค่าเซ็นเซอร์", "การเปิดหรือปิดส่วนประกอบ (HIGH/LOW)", "การแปลภาษา"], zh: ["讀取感測器值", "打開或關閉組件（HIGH/LOW）", "翻譯語言"]}, answer: 1 }
                 ],
                 next_unit: 'G8_U2'
             },
