@@ -121,21 +121,10 @@
         </div>
     </div>
 
-    <!-- FIREBASE AND CORE SCRIPTS -->
+    <!-- CORE SCRIPTS -->
     <script type="module">
-        // Firebase Imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- GLOBAL VARIABLES ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        let db;
-        let auth;
-        let userId = null;
         let activeUnitId = 'G7_U1';
         let userProgress = { scores: {}, current_unit: 'G7_U1' };
         let currentLanguage = 'en';
@@ -158,7 +147,7 @@
                 youtube: "https://www.youtube.com/embed/vYpolxA12-Y",
                 quiz: [
                     { question: { en: "What component limits the flow of current...?", th: "ส่วนประกอบใดจำกัดการไหลของกระแสไฟฟ้า...?", zh: "哪个元件用于限制电路中的电流...?" }, options: { en: ["LED", "Resistor", "Switch"], th: ["LED", "ตัวต้านทาน", "สวิตช์"], zh: ["LED", "电阻", "开关"]}, answer: 1 },
-                    { question: { en: "What is the unit of measure for electrical resistance?", th: "หน่วยวัดความต้านทานไฟฟ้าคืออะไร?", zh: "电阻 की หน่วยวัดคืออะไร?" }, options: { en: ["Volt", "Ohm", "Ampere"], th: ["โวลต์", "โอห์ม", "แอมแปร์"], zh: ["伏特", "欧姆", "安培"]}, answer: 1 }
+                    { question: { en: "What is the unit of measure for electrical resistance?", th: "หน่วยวัดความต้านทานไฟฟ้าคืออะไร?", zh: "电阻 的单位是什么？" }, options: { en: ["Volt", "Ohm", "Ampere"], th: ["โวลต์", "โอห์ม", "แอมแปร์"], zh: ["伏特", "欧姆", "安培"]}, answer: 1 }
                 ],
                 next_unit: 'G7_U3'
             },
@@ -185,75 +174,21 @@
         };
         const ALL_UNITS = Object.keys(CURRICULUM);
 
-        // --- FIREBASE INITIALIZATION ---
-        async function initFirebase() {
-            try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    console.error("Firebase config is missing. Using local fallback.");
-                    userId = 'localuser_' + Date.now();
-                    document.getElementById('auth-status').textContent = `Status: Local Mode`;
-                    loadLocalProgress();
-                    return;
-                }
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                onAuthStateChanged(auth, user => {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('auth-status').textContent = `Status: Logged In (ID: ${userId.substring(0,8)}...)`;
-                        setupProgressListener();
-                    } else {
-                        signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
-                    }
-                });
-            } catch (error) {
-                console.error("Firebase init failed:", error);
-                document.getElementById('auth-status').textContent = `Error: Cannot connect to Firebase.`;
-            }
+        // --- INITIALIZATION ---
+        function initializeApp() {
+            document.getElementById('auth-status').textContent = `Status: Local Mode (Progress saved to this browser)`;
+            loadLocalProgress();
         }
 
         // --- PROGRESS HANDLING ---
-        function getProgressDocRef() {
-            return doc(db, `artifacts/${appId}/users/${userId}/progress/mechatronics_state`);
-        }
-
-        function setupProgressListener() {
-            if (!db || !userId) return;
-            onSnapshot(getProgressDocRef(), (docSnap) => {
-                if (docSnap.exists()) {
-                    userProgress = { scores: {}, ...docSnap.data() };
-                    if (!userProgress.scores) userProgress.scores = {};
-                } else {
-                    userProgress = { current_unit: 'G7_U1', scores: {} };
-                    setDoc(getProgressDocRef(), userProgress);
-                }
-                activeUnitId = userProgress.current_unit || 'G7_U1';
-                renderDashboard();
-                loadUnit(activeUnitId);
-            }, error => console.error("Progress listener failed:", error));
-        }
-
-        async function saveProgress(unitId, score) {
+        function saveProgress(unitId, score) {
             const nextUnit = CURRICULUM[unitId]?.next_unit || unitId;
             const newProgress = {
                 scores: { ...userProgress.scores, [unitId]: score },
                 current_unit: nextUnit
             };
-            if (db && userId) {
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        transaction.set(getProgressDocRef(), newProgress, { merge: true });
-                    });
-                    console.log("Transaction successfully committed!");
-                } catch (e) {
-                    console.error("Transaction failed: ", e);
-                }
-            } else {
-                localStorage.setItem('mechatronicsProgress', JSON.stringify(newProgress));
-                userProgress = newProgress;
-            }
+            localStorage.setItem('mechatronicsProgress', JSON.stringify(newProgress));
+            userProgress = newProgress;
         }
         
         function loadLocalProgress() {
@@ -364,7 +299,7 @@ if (!isPassed) unlocked = false;
                 feedback.textContent = `PERFECT! 100% PASSED. Unlocking next unit...`;
                 document.getElementById('submit-quiz-btn').disabled = true;
                 
-                await saveProgress(activeUnitId, 100);
+                saveProgress(activeUnitId, 100);
 
                 // The listener will auto-reload the view. We just need to load the next unit.
                 const nextUnitId = CURRICULUM[activeUnitId].next_unit;
@@ -381,7 +316,7 @@ if (!isPassed) unlocked = false;
         };
 
         // Initialize the app
-        initFirebase();
+        initializeApp();
         renderDashboard();
     </script>
 </body>
